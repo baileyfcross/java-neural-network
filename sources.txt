@@ -1,0 +1,12 @@
+Sources That I learn From:
+
+Good Teacher and Through Understanding of Machine Learning: Tobias Hill
+https://machinelearning.tobiashill.se/
+
+Java Implementations of Neural Networks by Mukarram A. Tahir:
+This is where most of the base code is derived from.
+https://www.amazon.com/Implementation-Neural-Networks-Mukarram-Tahir/dp/1419665359
+
+Introduction to Machine Learning in Python:
+While, this book is in python, the concepts are not.
+ISBN: 978-1-449-36941-5
