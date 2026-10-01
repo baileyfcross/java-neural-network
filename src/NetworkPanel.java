@@ -25,6 +25,8 @@ public final class NetworkPanel extends JPanel {
     private int animationStage;
     private double animationProgress;
     private Timer animationTimer;
+    private Timer weightHighlightTimer;
+    private Runnable animationCompletion;
     private final Map<String, Double> changedWeights = new HashMap<>();
 
     public NetworkPanel() {
@@ -33,11 +35,16 @@ public final class NetworkPanel extends JPanel {
     }
 
     public void animate(ForwardPass pass, int speed) {
+        animate(pass, speed, null);
+    }
+
+    public void animate(ForwardPass pass, int speed, Runnable onComplete) {
+        stopTimer();
+        clearWeightHighlight();
         this.pass = pass;
-        changedWeights.clear();
         animationStage = 1;
         animationProgress = 0;
-        stopTimer();
+        animationCompletion = onComplete;
         animationTimer = new Timer(30, event -> {
             animationProgress += 0.018 * speed;
             if (animationProgress >= 1) {
@@ -46,6 +53,9 @@ public final class NetworkPanel extends JPanel {
                 if (animationStage > 5) {
                     animationStage = 5;
                     stopTimer();
+                    Runnable completion = animationCompletion;
+                    animationCompletion = null;
+                    if (completion != null) completion.run();
                 }
             }
             repaint();
@@ -63,6 +73,7 @@ public final class NetworkPanel extends JPanel {
 
     public void showTrainingChange(ForwardPass before, ForwardPass after) {
         showPass(after);
+        clearWeightHighlight();
         changedWeights.clear();
         for (int index = 0; index < before.connections().size(); index++) {
             ForwardPass.ConnectionState oldState = before.connections().get(index);
@@ -71,21 +82,31 @@ public final class NetworkPanel extends JPanel {
                 changedWeights.put(newState.sourceName() + newState.destinationName(), oldState.weight());
             }
         }
-        Timer clearHighlight = new Timer(2200, event -> {
+        weightHighlightTimer = new Timer(2200, event -> {
             changedWeights.clear();
+            weightHighlightTimer = null;
             repaint();
         });
-        clearHighlight.setRepeats(false);
-        clearHighlight.start();
+        weightHighlightTimer.setRepeats(false);
+        weightHighlightTimer.start();
         repaint();
     }
 
     public void stopAnimation() {
         stopTimer();
+        clearWeightHighlight();
+        animationCompletion = null;
         animationStage = 0;
         animationProgress = 0;
-        changedWeights.clear();
         repaint();
+    }
+
+    private void clearWeightHighlight() {
+        if (weightHighlightTimer != null) {
+            weightHighlightTimer.stop();
+            weightHighlightTimer = null;
+        }
+        changedWeights.clear();
     }
 
     private void stopTimer() {
@@ -108,9 +129,9 @@ public final class NetworkPanel extends JPanel {
         g.drawString("A small network learning XOR", 45, 55);
         g.setFont(new Font("SansSerif", Font.PLAIN, 14)); g.setColor(new Color(85, 101, 108));
         g.drawString("Signals, weighted sums, and sigmoid activations", 48, 80);
-        drawLayerLabel(g, "INPUT LAYER", 105, 120);
-        drawLayerLabel(g, "HIDDEN LAYER", 435, 120);
-        drawLayerLabel(g, "OUTPUT LAYER", 785, 120);
+        drawLayerLabel(g, "INPUT LAYER", 105, 110);
+        drawLayerLabel(g, "HIDDEN LAYER", 435, 110);
+        drawLayerLabel(g, "OUTPUT LAYER", 785, 110);
     }
 
     private void drawLayerLabel(Graphics2D g, String label, int x, int y) {

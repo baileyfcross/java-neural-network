@@ -1,7 +1,6 @@
 import java.awt.BorderLayout;
-import java.util.concurrent.ExecutionException;
 import javax.swing.JFrame;
-import javax.swing.SwingWorker;
+import javax.swing.Timer;
 
 public final class NeuralNetworkFrame extends JFrame {
     private static final double[][] XOR_INPUTS = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
@@ -9,7 +8,10 @@ public final class NeuralNetworkFrame extends JFrame {
     private final NeuralNetwork network = new NeuralNetwork(2025);
     private final NetworkPanel networkPanel = new NetworkPanel();
     private final ControlPanel controls = new ControlPanel();
-    private SwingWorker<Void, TrainingUpdate> trainingWorker;
+    private boolean automaticTraining;
+    private int automaticSampleIndex;
+    private double epochErrorTotal;
+    private Timer automaticContinueTimer;
     private int epoch;
     private double error;
 
@@ -51,51 +53,118 @@ public final class NeuralNetworkFrame extends JFrame {
     }
 
     private void trainAutomatically() {
-        if (trainingWorker != null && !trainingWorker.isDone()) return;
-        controls.getTrainAutomatically().setEnabled(false);
-        trainingWorker = new SwingWorker<>() {
-            @Override protected Void doInBackground() {
-                for (int currentEpoch = 1; currentEpoch <= 10000 && !isCancelled(); currentEpoch++) {
-                    double currentError = network.trainEpoch(XOR_INPUTS, XOR_OUTPUTS);
-                    if (currentEpoch % 25 == 0 || currentError < 0.005) publish(new TrainingUpdate(currentEpoch, currentError));
-                    if (currentError < 0.005) break;
-                }
-                return null;
-            }
-
-            @Override protected void process(java.util.List<TrainingUpdate> updates) {
-                TrainingUpdate update = updates.get(updates.size() - 1);
-                epoch = update.epoch(); error = update.error();
-                ForwardPass pass = network.forward(selectedInputs());
-                networkPanel.showPass(pass);
-                showInformation("Training XOR across all four examples\n\nEpoch: " + epoch
-                        + "\nCurrent Error: " + format(error) + "\n\n" + formatInputs()
-                        + "\nPrediction: " + pass.binaryPrediction());
-            }
-
-            @Override protected void done() {
-                controls.getTrainAutomatically().setEnabled(true);
-                try { get(); }
-                catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
-                catch (ExecutionException ignored) { showInformation("Training stopped because an error occurred."); }
-            }
-        };
-        trainingWorker.execute();
+        if (automaticTraining) return;
+        automaticTraining = true;
+        automaticSampleIndex = 0;
+        epochErrorTotal = 0;
+        controls.setAutomaticTraining(true);
+        runNextAutomaticExample();
     }
 
     private void stopTraining() {
-        if (trainingWorker != null) trainingWorker.cancel(true);
-        controls.getTrainAutomatically().setEnabled(true);
+        if (!automaticTraining) return;
+        automaticTraining = false;
+        if (automaticContinueTimer != null) {
+            automaticContinueTimer.stop();
+            automaticContinueTimer = null;
+        }
+        networkPanel.stopAnimation();
+        controls.setAutomaticTraining(false);
+        showInformation("Automatic training stopped.\n\nEpoch: " + epoch
+                + "\nCurrent Error: " + format(error) + "\n\nWeights were kept.");
     }
 
     private void resetNetwork() {
-        stopTraining(); network.reset(); epoch = 0; error = 0; networkPanel.stopAnimation();
+        stopTraining();
+        network.reset();
+        epoch = 0;
+        error = 0;
+        automaticSampleIndex = 0;
+        epochErrorTotal = 0;
+        controls.setAutomaticTraining(false);
+        networkPanel.stopAnimation();
         showInformation("Network reset with deterministic weights.\n\nChoose XOR inputs and run a forward pass.");
+    }
+
+    private void runNextAutomaticExample() {
+        if (!automaticTraining) return;
+
+        int sampleIndex = automaticSampleIndex;
+        double[] inputs = XOR_INPUTS[sampleIndex].clone();
+        double expected = XOR_OUTPUTS[sampleIndex];
+        controls.setExample((int) inputs[0], (int) inputs[1], (int) expected);
+
+        ForwardPass pass = network.forward(inputs);
+        showInformation("Automatic Training\n\nEpoch: " + (epoch + 1)
+                + "\nExample: " + (sampleIndex + 1) + " / " + XOR_INPUTS.length
+                + "\n\nInputs: [" + (int) inputs[0] + ", " + (int) inputs[1] + "]"
+                + "\nExpected: " + (int) expected
+                + "\n\nRaw Output: " + format(pass.outputActivation())
+                + "\nPrediction: " + pass.binaryPrediction()
+                + "\nSample Error: waiting for training step"
+                + "\n\nForward pass is animating...");
+        networkPanel.animate(pass, controls.getSpeed(),
+                () -> trainAutomaticExample(inputs, expected, sampleIndex));
+    }
+
+    private void trainAutomaticExample(double[] inputs, double expected, int sampleIndex) {
+        if (!automaticTraining) return;
+
+        NeuralNetwork.TrainingResult result = network.trainStep(inputs, expected);
+        ForwardPass after = network.forward(inputs);
+        error = result.error();
+        epochErrorTotal += error;
+        networkPanel.showTrainingChange(result.pass(), after);
+        showInformation("Automatic Training\n\nEpoch: " + (epoch + 1)
+                + "\nExample: " + (sampleIndex + 1) + " / " + XOR_INPUTS.length
+                + "\n\nInputs: [" + (int) inputs[0] + ", " + (int) inputs[1] + "]"
+                + "\nExpected: " + (int) expected
+                + "\n\nRaw Output: " + format(result.pass().outputActivation())
+                + "\nPrediction: " + result.pass().binaryPrediction()
+                + "\nSample Error: " + format(error)
+                + "\nEpoch Error (running): " + format(epochErrorTotal / (sampleIndex + 1))
+                + "\n\nPurple connections changed weight.");
+
+        if (sampleIndex == XOR_INPUTS.length - 1) {
+            epoch++;
+            error = epochErrorTotal / XOR_INPUTS.length;
+            epochErrorTotal = 0;
+            automaticSampleIndex = 0;
+            if (error < 0.005 || epoch >= 10000) {
+                finishAutomaticTraining(error < 0.005
+                        ? "Target error reached."
+                        : "Maximum epoch count reached.");
+                return;
+            }
+            showInformation("Automatic Training\n\nEpoch: " + epoch + " complete"
+                    + "\nEpoch Error: " + format(error)
+                    + "\n\nStarting next epoch...");
+        } else {
+            automaticSampleIndex = sampleIndex + 1;
+        }
+        scheduleNextAutomaticExample();
+    }
+
+    private void scheduleNextAutomaticExample() {
+        if (!automaticTraining) return;
+        automaticContinueTimer = new Timer(700, event -> {
+            automaticContinueTimer = null;
+            runNextAutomaticExample();
+        });
+        automaticContinueTimer.setRepeats(false);
+        automaticContinueTimer.start();
+    }
+
+    private void finishAutomaticTraining(String reason) {
+        automaticTraining = false;
+        controls.setAutomaticTraining(false);
+        showInformation("Automatic Training Complete\n\n" + reason
+                + "\nEpoch: " + epoch + "\nEpoch Error: " + format(error)
+                + "\n\nWeights are ready to inspect.");
     }
 
     private double[] selectedInputs() { return new double[]{controls.getInputOne(), controls.getInputTwo()}; }
     private String formatInputs() { return "Inputs: [" + controls.getInputOne() + ", " + controls.getInputTwo() + "]"; }
     private void showInformation(String text) { controls.showInformation(text); }
     private static String format(double value) { return String.format("%.4f", value); }
-    private record TrainingUpdate(int epoch, double error) { }
 }

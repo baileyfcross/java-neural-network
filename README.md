@@ -27,7 +27,7 @@ The `NeuralNetwork` class contains the forward propagation, error calculation, b
 
 ## Run in Visual Studio Code
 
-Install a Java 25 JDK and open this folder in VS Code. Run `src/Main.java` using the Java extension's Run button.
+Install a Java 25 JDK and open this folder in VS Code. The workspace file `.vscode/settings.json` selects the installed Eclipse Adoptium JDK 25 for the Java language server, Run/Debug, and new integrated terminals. Open a new terminal after opening the project so its `java` and `javac` commands use that JDK. Run `src/Main.java` using the Java extension's Run button.
 
 The same program can be compiled directly from a terminal:
 

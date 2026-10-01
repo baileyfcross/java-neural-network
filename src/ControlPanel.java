@@ -15,7 +15,7 @@ public final class ControlPanel extends JPanel {
     private final JComboBox<Integer> inputOne = new JComboBox<>(new Integer[]{0, 1});
     private final JComboBox<Integer> inputTwo = new JComboBox<>(new Integer[]{0, 1});
     private final JComboBox<Integer> expected = new JComboBox<>(new Integer[]{0, 1});
-    private final JSlider speed = new JSlider(1, 10, 5);
+    private final JSlider speed = new JSlider(1, 20, 5);
     private final JTextArea information = new JTextArea();
     private final JButton runForward = new JButton("Run Forward Pass");
     private final JButton trainStep = new JButton("Train One Step");
@@ -36,6 +36,7 @@ public final class ControlPanel extends JPanel {
         information.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         information.setText("Run a forward pass to inspect the calculation.");
         add(information, BorderLayout.CENTER);
+        stopTraining.setEnabled(false);
     }
 
     private JPanel createControls() {
@@ -68,4 +69,17 @@ public final class ControlPanel extends JPanel {
     public JButton getStopTraining() { return stopTraining; }
     public JButton getReset() { return reset; }
     public void showInformation(String text) { information.setText(text); }
+
+    public void setExample(int firstInput, int secondInput, int expectedOutput) {
+        inputOne.setSelectedItem(firstInput);
+        inputTwo.setSelectedItem(secondInput);
+        expected.setSelectedItem(expectedOutput);
+    }
+
+    public void setAutomaticTraining(boolean running) {
+        runForward.setEnabled(!running);
+        trainStep.setEnabled(!running);
+        trainAutomatically.setEnabled(!running);
+        stopTraining.setEnabled(running);
+    }
 }
