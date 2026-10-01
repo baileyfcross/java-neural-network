@@ -39,6 +39,22 @@ class NeuralNetworkTest {
     }
 
     @Test
+    void preparedTrainingStepDoesNotChangeWeightsUntilApplied() {
+        NeuralNetwork network = new NeuralNetwork(2025);
+        double before = network.getConnections().get(0).getWeight();
+
+        TrainingStep step = network.prepareTrainingStep(new double[]{1, 0}, 1);
+
+        assertEquals(before, network.getConnections().get(0).getWeight(), 1e-12);
+        assertEquals(step.beforeTraining().outputActivation(),
+                network.forward(new double[]{1, 0}).outputActivation(), 1e-12);
+        network.applyTrainingStep(step);
+        assertEquals(step.afterTraining().outputActivation(),
+                network.forward(new double[]{1, 0}).outputActivation(), 1e-12);
+        assertNotEquals(before, network.getConnections().get(0).getWeight());
+    }
+
+    @Test
     void repeatedXorTrainingLowersErrorAndClassifiesPatterns() {
         NeuralNetwork network = new NeuralNetwork(2025);
         double initialError = network.trainEpoch(XOR_INPUTS, XOR_OUTPUTS);
