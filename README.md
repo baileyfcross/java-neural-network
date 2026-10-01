@@ -85,3 +85,58 @@ The tests cover sigmoid calculations, deterministic initialization, forward prop
 12. Run the same input again.
 13. Compare the new output.
 14. Show students which connection weights changed.
+
+## Building a JAR File
+
+### Move the compiled classes into the package directory before creating the JAR file.
+```bash
+mkdir build
+mkdir build\classes
+mkdir build\package
+
+javac -d build\classes src\*.java
+```
+
+In macOS or Linux terminal
+
+```bash
+mkdir build
+mkdir build/classes
+mkdir build/package
+
+javac -d build/classes src/*.java
+```
+
+In Powershell
+
+```powershell
+mkdir build
+mkdir build\classes
+mkdir build\package
+
+javac -d build\classes src\*.java
+```
+
+### To Create the Jar File
+```bash
+jar cvf build\package\NeuralNetwork.jar -C build\classes .
+```
+
+```powershell
+jar --create `
+    --file build\package\NeuralNetworkVisualizer.jar `
+    --main-class Main `
+    -C build\classes .
+```
+
+## Self Contained Windows Executable
+
+```powershell
+jpackage `
+    --type app-image `
+    --name "Neural Network Visualizer" `
+    --input build\package `
+    --main-jar NeuralNetworkVisualizer.jar `
+    --main-class Main `
+    --dest build\distribution
+```

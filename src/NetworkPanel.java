@@ -171,9 +171,9 @@ public final class NetworkPanel extends JPanel {
         g.drawString("A small network learning XOR", 45, 55);
         g.setFont(new Font("SansSerif", Font.PLAIN, 14)); g.setColor(new Color(85, 101, 108));
         g.drawString("Signals, weighted sums, and sigmoid activations", 48, 80);
-        drawLayerLabel(g, "INPUT LAYER", 105, 110);
-        drawLayerLabel(g, "HIDDEN LAYER", 435, 110);
-        drawLayerLabel(g, "OUTPUT LAYER", 785, 110);
+        drawLayerLabel(g, "INPUT LAYER", 105, 100);
+        drawLayerLabel(g, "HIDDEN LAYER", 435, 100);
+        drawLayerLabel(g, "OUTPUT LAYER", 785, 100);
     }
 
     private void drawLayerLabel(Graphics2D g, String label, int x, int y) {

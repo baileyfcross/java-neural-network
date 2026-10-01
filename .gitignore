@@ -2,6 +2,9 @@
 *.class
 target/
 
+# Build directories
+build/
+
 # Log file
 *.log
 
